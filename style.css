@@ -388,7 +388,7 @@ input:focus, textarea:focus, select:focus {
     background: rgba(108, 99, 255, 0.1);
     border-color: var(--primary-color);
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start; /* Changed from space-between to keep text near box */
 }
 
 /* Status Message */
