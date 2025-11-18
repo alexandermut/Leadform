@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const photoPreviewImg = document.getElementById('photoPreviewImg');
     const btnRemovePhoto = document.getElementById('btnRemovePhoto');
 
+    const amountInput = document.getElementById('amount');
+
     // --- 1. Initialization ---
     function init() {
         startClock();
@@ -41,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Photo Listeners
         photoInput.addEventListener('change', handlePhotoSelect);
         btnRemovePhoto.addEventListener('click', clearPhoto);
+
+        // Amount Formatting
+        amountInput.addEventListener('blur', formatCurrencyInput);
     }
 
     // --- 2. Clock & Date Logic ---
@@ -143,6 +148,29 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset UI
         photoPreviewOverlay.classList.add('hidden');
         photoContainer.classList.remove('has-image');
+    }
+
+    // --- 4.1 Currency Formatting Logic ---
+    function formatCurrencyInput(e) {
+        const input = e.target;
+        let value = input.value;
+
+        if (!value) return;
+
+        // Clean up: Remove dots (thousands), replace comma with dot (decimal)
+        // Example: "10.000,50" -> "10000,50" -> "10000.50"
+        let cleanValue = value.replace(/\./g, '').replace(',', '.');
+
+        // Parse float
+        const number = parseFloat(cleanValue);
+
+        // If valid number, format nicely
+        if (!isNaN(number)) {
+            input.value = number.toLocaleString('de-DE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
     }
 
     // --- 5. Helper: Show Status ---
