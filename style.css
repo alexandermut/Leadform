@@ -263,7 +263,6 @@ select {
     width: 100%;
     padding: 10px 12px; /* Reduced vertical padding for tighter look */
     padding-left: 54px; /* Space for the toggle on the left */
-    padding-right: 44px !important; /* Extra space on right for Clear Button */
     background: var(--input-bg);
     border: 1px solid var(--input-border);
     border-radius: 10px;
@@ -295,44 +294,6 @@ input:focus, textarea:focus, select:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px var(--input-glow);
 }
-
-/* Input Clear Button - "X" */
-.input-clear-btn {
-    position: absolute;
-    right: 8px;
-    /* Vertically center relative to input height */
-    top: 50%;
-    transform: translateY(-50%);
-    background: transparent;
-    border: none;
-    color: #888;
-    font-size: 18px;
-    font-weight: bold;
-    cursor: pointer;
-    width: 32px;
-    height: 32px;
-    display: none; /* Hidden by default */
-    align-items: center;
-    justify-content: center;
-    z-index: 5;
-    opacity: 0.7;
-    -webkit-tap-highlight-color: transparent;
-}
-
-/* Adjust position for textarea */
-.input-wrapper:has(textarea) .input-clear-btn {
-    top: 12px;
-    transform: none;
-}
-
-.input-clear-btn:active {
-    opacity: 1;
-    transform: translateY(-50%) scale(0.9);
-}
-.input-wrapper:has(textarea) .input-clear-btn:active {
-    transform: scale(0.9);
-}
-
 
 /* Checkbox Toggles for Clearing */
 .partial-clear-toggle {

@@ -49,49 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Amount Formatting
         amountInput.addEventListener('blur', formatCurrencyInput);
-
-        // Initialize Input Clear Buttons
-        initClearButtons();
-    }
-
-    // --- 1.1 Input Clear Buttons Logic ---
-    function initClearButtons() {
-        const clearBtns = document.querySelectorAll('.input-clear-btn');
-
-        clearBtns.forEach(btn => {
-            const wrapper = btn.closest('.input-wrapper');
-            const input = wrapper.querySelector('input:not([type="checkbox"]):not([type="file"]), textarea');
-            
-            if (!input) return;
-
-            // Helper to toggle visibility
-            const updateVisibility = () => {
-                btn.style.display = input.value.length > 0 ? 'flex' : 'none';
-            };
-
-            // Check on load
-            updateVisibility();
-
-            // Check on input
-            input.addEventListener('input', updateVisibility);
-
-            // Handle Click (Mousedown/Touchstart to prevent blur)
-            const clearHandler = (e) => {
-                e.preventDefault(); // Critical: Prevents the input from losing focus
-                e.stopPropagation(); // Stop event bubbling
-
-                input.value = '';
-                updateVisibility();
-                input.focus(); // Ensure focus stays
-                
-                // Trigger 'change' event manually so other listeners (storage, format) react
-                const event = new Event('change', { bubbles: true });
-                input.dispatchEvent(event);
-            };
-
-            btn.addEventListener('mousedown', clearHandler);
-            btn.addEventListener('touchstart', clearHandler, { passive: false });
-        });
     }
 
     // --- 2. Clock & Date Logic ---
@@ -132,10 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Default to alexander.mut@abcfinance.de if nothing is stored
         salesEmailInput.value = localStorage.getItem('salesEmail') || 'alexander.mut@abcfinance.de';
         assistantEmailInput.value = localStorage.getItem('assistantEmail') || '';
-        
-        // Trigger visibility update for clear buttons after loading
-        salesEmailInput.dispatchEvent(new Event('input'));
-        assistantEmailInput.dispatchEvent(new Event('input'));
     }
 
     function saveSettings() {
