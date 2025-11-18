@@ -30,23 +30,29 @@ Diese Roadmap dokumentiert den aktuellen Entwicklungsstand, geplante Optimierung
 
 ---
 
-## 🚀 Phase 2: UX Polish & PWA (Nächste Schritte)
-**Ziel:** Die App soll sich wie eine native App anfühlen und installationsfähig werden.
+## ✅ Phase 2: Performance & UX Polish (Abgeschlossen)
+**Ziel:** Die App soll sich wie eine native App anfühlen und schnell reagieren.
+
+*   **Foto-Handling Optimierung:**
+    *   [x] **Automatische Komprimierung:** Fotos werden auf max. 1280px skaliert und als JPEG (70%) gespeichert. Dies reduziert die Größe von ~15MB auf ~500KB für schnelles Einfügen.
+    *   [x] **Sofort-Verarbeitung:** Bild wird direkt beim Upload in der App vorbereitet, um Verzögerungen beim Senden auf iOS zu vermeiden.
+
+---
+
+## 🚀 Phase 3: PWA & Offline (Nächste Schritte)
+**Ziel:** Die App soll installationsfähig werden.
 
 *   **Progressive Web App (PWA):**
     *   [ ] `manifest.json` erstellen (App Icon, Name, Standalone-Modus).
     *   [ ] Service Worker implementieren (Offline-Caching der Assets `index.html`, `style.css`, `script.js` für garantierte Verfügbarkeit auch im Flugmodus).
     *   [ ] "Add to Homescreen" Prompt Logik.
-*   **Foto-Handling Optimierung:**
-    *   [ ] Komprimierung des Fotos vor dem Clipboard-Copy (Performance auf älteren Geräten).
-    *   [ ] Optional: OCR (Texterkennung) via Tesseract.js (würde App-Größe erhöhen, aber Abtippen ersparen).
 *   **Komfort-Funktionen:**
+    *   [ ] Optional: OCR (Texterkennung) via Tesseract.js (würde App-Größe erhöhen, aber Abtippen ersparen).
     *   [ ] "Rückgängig"-Funktion (Undo) nach dem Löschen (für 5 Sekunden).
-    *   [ ] Vibrations-Feedback (Haptic API) bei Erfolg/Fehler.
 
 ---
 
-## 📊 Phase 3: Daten-Sicherheit & Export (Mittelfristig)
+## 📊 Phase 4: Daten-Sicherheit & Export (Mittelfristig)
 **Ziel:** Sicherheit gegen Datenverlust, falls die E-Mail-App abstürzt.
 
 *   **Lokaler Notfall-Speicher:**
@@ -55,21 +61,6 @@ Diese Roadmap dokumentiert den aktuellen Entwicklungsstand, geplante Optimierung
 *   **CSV / Excel Export:**
     *   [ ] Funktion "Tagesabschluss": Exportiert alle lokal gespeicherten Leads des Tages als `.csv` Datei zum Download.
     *   [ ] Button "Liste löschen" für den nächsten Tag.
-*   **Validierung:**
-    *   [ ] Prüfung auf Dubletten (Warnung, wenn E-Mail bereits heute erfasst wurde).
-
----
-
-## ☁️ Phase 4: Backend Integration (Langfristig / Optional)
-**Ziel:** Automatisierung und CRM-Anbindung (verlässt den reinen Offline-Ansatz).
-
-*   **Server-Side Sending:**
-    *   [ ] API-Endpunkt zum direkten Versenden (statt `mailto`).
-    *   [ ] Echte Dateianhänge für Fotos.
-*   **CRM-Anbindung:**
-    *   [ ] Direkter Push in Salesforce / HubSpot / Pipedrive via Webhook.
-*   **Authentifizierung:**
-    *   [ ] Login für Vertriebsmitarbeiter.
 
 ---
 
@@ -81,3 +72,4 @@ Diese Roadmap dokumentiert den aktuellen Entwicklungsstand, geplante Optimierung
 | **Kein Server** | Gewollt | Alle Daten liegen nur auf dem Gerät des Nutzers. Datenschutzfreundlich, aber kein zentrales Backup. |
 | **iOS Safari Zoom** | Gelöst | `font-size: 1.2rem` verhindert Auto-Zoom beim Tippen. |
 | **Gmail Formatierung** | Gelöst | Nutzung von `\r\n` erzwingt korrekte Zeilenumbrüche auch in der Gmail iOS App. |
+| **Foto Größe** | Gelöst | Automatische Skalierung auf 1280px + JPEG Komprimierung. |

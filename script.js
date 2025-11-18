@@ -137,8 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             reader.readAsDataURL(file);
 
-            // 2. Prepare Clipboard Blob immediately (for iOS)
-            createImageBlob(file);
+            // 2. Prepare Compressed Clipboard Blob immediately
+            createCompressedImageBlob(file);
 
         } else {
             if(photoInput.files.length === 0) {
@@ -147,21 +147,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function createImageBlob(file) {
+    function createCompressedImageBlob(file) {
         const img = new Image();
         const url = URL.createObjectURL(file);
         
         img.onload = () => {
+            // Calculate new dimensions (Max 1280px on long edge)
+            const MAX_SIZE = 1280;
+            let width = img.naturalWidth;
+            let height = img.naturalHeight;
+
+            if (width > height) {
+                if (width > MAX_SIZE) {
+                    height *= MAX_SIZE / width;
+                    width = MAX_SIZE;
+                }
+            } else {
+                if (height > MAX_SIZE) {
+                    width *= MAX_SIZE / height;
+                    height = MAX_SIZE;
+                }
+            }
+
             const canvas = document.createElement('canvas');
-            canvas.width = img.naturalWidth;
-            canvas.height = img.naturalHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
+            canvas.width = width;
+            canvas.height = height;
             
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Export as JPEG with 0.7 quality (Significant compression)
             canvas.toBlob((blob) => {
                 currentPhotoBlob = blob;
                 URL.revokeObjectURL(url); // Clean up
-            }, 'image/png');
+            }, 'image/jpeg', 0.7);
         };
         img.src = url;
     }
@@ -232,11 +251,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (hasPhoto) {
             try {
                 if (currentPhotoBlob) {
-                     const item = new ClipboardItem({ 'image/png': currentPhotoBlob });
+                     const item = new ClipboardItem({ 'image/jpeg': currentPhotoBlob });
                      await navigator.clipboard.write([item]);
                      imageNote = "\r\n\r\n>>> FOTO HIER EINFÜGEN (Foto liegt in der Zwischenablage) <<<";
                      // Use alert to pause execution so user sees the message before mail client opens
-                     alert("📸 Foto kopiert!\n\nDas Foto der Visitenkarte befindet sich in der Zwischenablage.\n\nBitte in der E-Mail 'Einfügen' wählen (lange tippen).");
+                     alert("📸 Foto kopiert!\n\nDas Foto der Visitenkarte (komprimiert) befindet sich in der Zwischenablage.\n\nBitte in der E-Mail 'Einfügen' wählen (lange tippen).");
                 } else {
                      console.warn("Blob not ready yet");
                 }
