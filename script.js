@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const photoPreviewImg = document.getElementById('photoPreviewImg');
     const btnRemovePhoto = document.getElementById('btnRemovePhoto');
 
+    // Clipboard optimization: store blob globally
+    let currentPhotoBlob = null;
+
     const amountInput = document.getElementById('amount');
 
     // --- 1. Initialization ---
@@ -46,6 +49,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Amount Formatting
         amountInput.addEventListener('blur', formatCurrencyInput);
+
+        // Initialize Input Clear Buttons
+        initClearButtons();
+    }
+
+    // --- 1.1 Input Clear Buttons Logic ---
+    function initClearButtons() {
+        const clearBtns = document.querySelectorAll('.input-clear-btn');
+
+        clearBtns.forEach(btn => {
+            const wrapper = btn.closest('.input-wrapper');
+            const input = wrapper.querySelector('input:not([type="checkbox"]):not([type="file"]), textarea');
+            
+            if (!input) return;
+
+            // Helper to toggle visibility
+            const updateVisibility = () => {
+                btn.style.display = input.value.length > 0 ? 'flex' : 'none';
+            };
+
+            // Check on load
+            updateVisibility();
+
+            // Check on input
+            input.addEventListener('input', updateVisibility);
+
+            // Handle Click (Mousedown/Touchstart to prevent blur)
+            const clearHandler = (e) => {
+                e.preventDefault(); // Critical: Prevents the input from losing focus
+                e.stopPropagation(); // Stop event bubbling
+
+                input.value = '';
+                updateVisibility();
+                input.focus(); // Ensure focus stays
+                
+                // Trigger 'change' event manually so other listeners (storage, format) react
+                const event = new Event('change', { bubbles: true });
+                input.dispatchEvent(event);
+            };
+
+            btn.addEventListener('mousedown', clearHandler);
+            btn.addEventListener('touchstart', clearHandler, { passive: false });
+        });
     }
 
     // --- 2. Clock & Date Logic ---
@@ -86,6 +132,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Default to alexander.mut@abcfinance.de if nothing is stored
         salesEmailInput.value = localStorage.getItem('salesEmail') || 'alexander.mut@abcfinance.de';
         assistantEmailInput.value = localStorage.getItem('assistantEmail') || '';
+        
+        // Trigger visibility update for clear buttons after loading
+        salesEmailInput.dispatchEvent(new Event('input'));
+        assistantEmailInput.dispatchEvent(new Event('input'));
     }
 
     function saveSettings() {
@@ -124,26 +174,50 @@ document.addEventListener('DOMContentLoaded', () => {
     function handlePhotoSelect(e) {
         const file = e.target.files[0];
         if (file && file.type.startsWith('image/')) {
+            
+            // 1. Display Preview
             const reader = new FileReader();
             reader.onload = function(ev) {
                 photoPreviewImg.src = ev.target.result;
-                // Use class based toggle for nicer styling support
                 photoPreviewOverlay.classList.remove('hidden');
                 photoContainer.classList.add('has-image');
             }
             reader.readAsDataURL(file);
+
+            // 2. Prepare Clipboard Blob immediately (for iOS)
+            createImageBlob(file);
+
         } else {
-            // Fallback if not an image or cancelled
             if(photoInput.files.length === 0) {
                // do nothing
             }
         }
     }
 
+    function createImageBlob(file) {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            
+            canvas.toBlob((blob) => {
+                currentPhotoBlob = blob;
+                URL.revokeObjectURL(url); // Clean up
+            }, 'image/png');
+        };
+        img.src = url;
+    }
+
     function clearPhoto(e) {
         if(e) e.stopPropagation(); // Stop bubbling so we don't trigger upload again
         photoInput.value = '';
         photoPreviewImg.src = '';
+        currentPhotoBlob = null; // Clear blob
         
         // Reset UI
         photoPreviewOverlay.classList.add('hidden');
@@ -170,6 +244,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
+            // Trigger input event to ensure clear button shows
+            input.dispatchEvent(new Event('input'));
+        } else {
+            input.value = ''; // Clear invalid input
+            input.dispatchEvent(new Event('input'));
         }
     }
 
@@ -199,10 +278,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (hasPhoto) {
             try {
-                await copyImageToClipboard(photoPreviewImg);
-                imageNote = "\n\n>>> FOTO HIER EINFÜGEN (Foto liegt in der Zwischenablage) <<<";
-                // Use alert to pause execution so user sees the message before mail client opens
-                alert("📸 Foto kopiert!\n\nDas Foto der Visitenkarte befindet sich in der Zwischenablage.\n\nBitte in der E-Mail 'Einfügen' wählen (lange tippen).");
+                if (currentPhotoBlob) {
+                     const item = new ClipboardItem({ 'image/png': currentPhotoBlob });
+                     await navigator.clipboard.write([item]);
+                     imageNote = "\r\n\r\n>>> FOTO HIER EINFÜGEN (Foto liegt in der Zwischenablage) <<<";
+                     // Use alert to pause execution so user sees the message before mail client opens
+                     alert("📸 Foto kopiert!\n\nDas Foto der Visitenkarte befindet sich in der Zwischenablage.\n\nBitte in der E-Mail 'Einfügen' wählen (lange tippen).");
+                } else {
+                     console.warn("Blob not ready yet");
+                }
             } catch (err) {
                 console.error("Clipboard failed", err);
                 showStatus("Foto konnte nicht kopiert werden (Browser-Einschränkung).", "error");
@@ -251,33 +335,33 @@ document.addEventListener('DOMContentLoaded', () => {
             data.timestamp
         ].filter(Boolean).join(' | ');
         
-        // Body construction using standard newlines
-        let body = `LEAD ERFASSUNG - ${data.event || 'Kein Event'}\n`;
-        body += `----------------------------------------\n`;
-        body += `Datum: ${data.timestamp}\n\n`;
+        // Body construction using standard newlines \r\n for better mobile support
+        let body = `LEAD ERFASSUNG - ${data.event || 'Kein Event'}\r\n`;
+        body += `----------------------------------------\r\n`;
+        body += `Datum: ${data.timestamp}\r\n\r\n`;
         
-        body += `KONTAKT:\n`;
-        body += `Name: ${data.firstname} ${data.lastname}\n`;
-        body += `Firma: ${data.company}\n`;
-        body += `Position: ${data.position || '-'}\n`;
-        body += `Adresse: ${data.street || ''} ${data.zip || ''} ${data.city || ''}\n`;
-        body += `Web: ${data.website || '-' }\n`;
-        body += `E-Mail: ${data.email}\n`;
-        body += `Tel: ${data.phone || '-'}\n\n`;
+        body += `KONTAKT:\r\n`;
+        body += `Name: ${data.firstname} ${data.lastname}\r\n`;
+        body += `Firma: ${data.company}\r\n`;
+        body += `Position: ${data.position || '-'}\r\n`;
+        body += `Adresse: ${data.street || ''} ${data.zip || ''} ${data.city || ''}\r\n`;
+        body += `Web: ${data.website || '-' }\r\n`;
+        body += `E-Mail: ${data.email}\r\n`;
+        body += `Tel: ${data.phone || '-'}\r\n\r\n`;
         
-        body += `INTERESSE:\n`;
-        body += (interestValue || 'Keine') + `\n\n`;
+        body += `INTERESSE:\r\n`;
+        body += (interestValue || 'Keine') + `\r\n\r\n`;
         
-        body += `DETAILS:\n`;
-        body += `Volumen: ${data.amount || '-'}\n`;
-        body += `Zeitraum: ${data.timeline || '-'}\n\n`;
+        body += `DETAILS:\r\n`;
+        body += `Volumen: ${data.amount || '-'}\r\n`;
+        body += `Zeitraum: ${data.timeline || '-'}\r\n\r\n`;
         
-        body += `NACHRICHT:\n`;
+        body += `NACHRICHT:\r\n`;
         body += (data.message || '-');
         
         body += imageNote; // Append the note about the image
         
-        body += `\n\n----------------------------------------\n`;
+        body += `\r\n\r\n----------------------------------------\r\n`;
         body += `DSGVO Zustimmung: ${gdprChecked ? 'JA' : 'NEIN'}`;
         
         // Open Mailto - encodeURIComponent handles all special chars correctly
@@ -288,92 +372,59 @@ document.addEventListener('DOMContentLoaded', () => {
         showStatus(`Lead vorbereitet! Versandzeit: ${data.timestamp}`, 'success');
     }
 
-    // Helper function to copy image blob to clipboard
-    function copyImageToClipboard(imgElement) {
-        // Draw image to a canvas to get the blob data
-        const canvas = document.createElement('canvas');
-        canvas.width = imgElement.naturalWidth;
-        canvas.height = imgElement.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(imgElement, 0, 0);
-
-        return new Promise((resolve, reject) => {
-            canvas.toBlob(blob => {
-                if (!blob) return reject('Canvas to Blob failed');
-                try {
-                    const item = new ClipboardItem({ 'image/png': blob });
-                    navigator.clipboard.write([item]).then(resolve).catch(reject);
-                } catch (err) {
-                    reject(err);
-                }
-            }, 'image/png');
-        });
-    }
-
     // --- 7. Clear Logic ---
     
-    function clearFieldIfToggled(wrapperId, toggleId) {
-        const toggle = document.getElementById(toggleId);
-        if (toggle && toggle.checked) {
-            const el = document.getElementById(wrapperId);
-            if (el) {
-                el.value = '';
-            }
-            return true; // returns true if cleared
-        }
-        return false;
-    }
-
+    // Generic function to find toggles
     function handlePartialClear() {
-        // Internal Settings
-        const salesCleared = clearFieldIfToggled('salesEmail', 'toggle-salesEmail');
-        const asstCleared = clearFieldIfToggled('assistantEmail', 'toggle-assistantEmail');
-        
-        if (salesCleared || asstCleared) {
-            saveSettings(); // Update localStorage immediately
+        let somethingCleared = false;
+
+        // 1. Loop through all active toggles
+        document.querySelectorAll('.partial-clear-toggle:checked').forEach(toggle => {
+            // Find parent input wrapper
+            const wrapper = toggle.closest('.input-wrapper, .group-header');
+            
+            if (!wrapper) return;
+
+            // Case A: Inputs / Textareas / Selects inside input-wrapper
+            const input = wrapper.parentElement.querySelector('input:not([type="checkbox"]):not([type="file"]), textarea, select') || wrapper.querySelector('input:not([type="checkbox"]):not([type="file"]), textarea, select');
+
+            if (input) {
+                // Special Case: Interests Dropdown reset
+                if (input.id === 'interests') {
+                    input.value = 'Investition';
+                } else {
+                     input.value = '';
+                }
+                
+                // Trigger event for Clear Buttons and Storage
+                input.dispatchEvent(new Event('input'));
+                input.dispatchEvent(new Event('change'));
+                somethingCleared = true;
+            }
+
+            // Case B: Checkboxes (GDPR, CC)
+            const checkbox = wrapper.querySelector('input[type="checkbox"]:not(.partial-clear-toggle)');
+            if (checkbox) {
+                if (checkbox.id === 'ccCustomer') {
+                    checkbox.checked = true; // Reset to default
+                } else {
+                    checkbox.checked = false;
+                }
+                somethingCleared = true;
+            }
+
+            // Case C: Photo
+            if (toggle.id === 'toggle-photo') {
+                clearPhoto(null);
+                somethingCleared = true;
+            }
+        });
+
+        if (somethingCleared) {
+             showStatus('Markierte Felder bereinigt.', 'warning');
+        } else {
+             showStatus('Keine Felder zum Leeren markiert.', 'warning');
         }
-
-        // Inputs
-        clearFieldIfToggled('event', 'toggle-event');
-        clearFieldIfToggled('firstname', 'toggle-firstname');
-        clearFieldIfToggled('lastname', 'toggle-lastname');
-        clearFieldIfToggled('company', 'toggle-company');
-        clearFieldIfToggled('position', 'toggle-position');
-        clearFieldIfToggled('street', 'toggle-street');
-        clearFieldIfToggled('zip', 'toggle-zip');
-        clearFieldIfToggled('city', 'toggle-city');
-        clearFieldIfToggled('website', 'toggle-website');
-        clearFieldIfToggled('customerEmail', 'toggle-customerEmail');
-        clearFieldIfToggled('phone', 'toggle-phone');
-        clearFieldIfToggled('amount', 'toggle-amount');
-        clearFieldIfToggled('timeline', 'toggle-timeline');
-        clearFieldIfToggled('message', 'toggle-message');
-
-        // Photo (Partial)
-        const photoToggle = document.getElementById('toggle-photo');
-        if (photoToggle && photoToggle.checked) {
-            clearPhoto(null);
-        }
-
-        // Interests Dropdown (Special Case to reset to default)
-        const intToggle = document.getElementById('toggle-interests');
-        if (intToggle && intToggle.checked) {
-            document.getElementById('interests').value = 'Investition';
-        }
-
-        // GDPR
-        const gdprToggle = document.getElementById('toggle-gdpr');
-        if (gdprToggle && gdprToggle.checked) {
-            document.getElementById('gdpr').checked = false;
-        }
-
-        // CC Customer
-        const ccToggle = document.getElementById('toggle-ccCustomer');
-        if (ccToggle && ccToggle.checked) {
-            document.getElementById('ccCustomer').checked = true; // Reset to default 'true'
-        }
-
-        showStatus('Formular teilweise bereinigt.', 'warning');
     }
 
     function handleFullClear() {
@@ -393,6 +444,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (input.id === 'salesEmail' || input.id === 'assistantEmail') return;
 
             input.value = '';
+            // Trigger event for Clear Buttons
+            input.dispatchEvent(new Event('input'));
         });
 
         // Clear Photo Always on Full Clear
