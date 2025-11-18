@@ -315,7 +315,9 @@ input:focus, textarea:focus, select:focus {
 
 /* Positioning for Groups (GDPR) */
 .group-header .partial-clear-toggle {
-    position: static;
+    position: relative;
+    left: auto;
+    top: auto;
     flex-shrink: 0;
 }
 

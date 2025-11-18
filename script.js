@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleFullClear() {
         // Note: Internal emails are NOT cleared here regardless of toggle, 
         // unless the user uses "Partial Clear". "Full Clear" is a hard reset for lead data only.
-        if (!confirm('Wirklich ALLES löschen? (Interne E-Mails bleiben erhalten, außer sie wurden via "Alles ohne x" entfernt)')) {
+        if (!confirm('Wirklich ALLES löschen? (Interne E-Mails bleiben erhalten, außer sie wurden via "markierte Felder leeren" entfernt)')) {
             return;
         }
 
